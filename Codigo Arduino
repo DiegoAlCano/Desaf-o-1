@@ -1,34 +1,118 @@
 #include <LiquidCrystal.h>
+
 int analogPin = 0;
 int val = 0;
-int seconds = 0;
-int leerDatos= 13;
+int leerDatos = 13;
 int mostrarDatos = 8;
+
+int estadoAC1 = 0;  // Estado para capturar datos
+int estadoAC2 = 0;  // Estado para mostrar datos
+int capacidad = 100;
+int* arr = new int[capacidad];
+int i = 0;
+
+bool Cuadrada = 0;
 
 LiquidCrystal lcd_1(12, 11, 5, 4, 3, 2);
 
-void setup()
-{
+void setup() {
   lcd_1.begin(16, 2);
-
-  
-  lcd_1.print("Listo");
-   Serial.begin(9600);
+  lcd_1.print("Iniciando...");
+  Serial.begin(9600);
   pinMode(leerDatos, INPUT);
-  pinMode(mostrarDatos,INPUT);
+  pinMode(mostrarDatos, INPUT);
+  delay(2000);
+  lcd_1.clear();
 }
 
-void loop()
-{
-  if(digitalRead(leerDatos)==HIGH)
-  {
-    val = analogRead(analogPin);
-    Serial.println(val);
+void loop() {
+  // Leer el estado del pulsador de capturar datos
+  if (digitalRead(leerDatos) == HIGH) {
+    estadoAC1 = 1;  // Activar el estado de captura
+    estadoAC2 = 0;  // Desactivar el estado de mostrar datos
   }
-  
-  lcd_1.setCursor(0, 1);
-  lcd_1.print(val);
-  delay(100); 
-  seconds += 1;
-  
+
+  // Si está en estado de captura de datos
+  if (estadoAC1 == 1) {
+    lcd_1.home();
+    lcd_1.print("Capturando Datos");
+
+    // Capturar datos, verificar que no se salga del límite de capacidad
+    if (i < capacidad) {
+      val = analogRead(analogPin);
+      Serial.println(val);
+      arr[i] = val;
+      i++;
+    } else {
+      redArr(arr, capacidad);  // Redimensionar si es necesario
+    }
+
+    // Verificar si se presiona el pulsador para mostrar datos
+    if (digitalRead(mostrarDatos) == HIGH) {
+      estadoAC1 = 0;  // Desactivar el estado de captura
+      estadoAC2 = 1;  // Activar el estado de mostrar datos
+      lcd_1.clear();
+    }
+  }
+
+  // Si está en estado de mostrar datos
+  if (estadoAC2 == 1) {
+    lcd_1.setCursor(0, 0);
+    lcd_1.print("Tipo de senal");
+    lcd_1.setCursor(0, 1);
+    Cuadrada = senalCuadrada(arr, i);  // Pasar tamaño actual de datos (i)
+    if (Cuadrada) {
+      lcd_1.print("Cuadrada");
+    } else {
+      lcd_1.print("No Cuadrada");
+    }
+    delay(5000);
+    lcd_1.clear();
+
+    // Limpiar el arreglo y reiniciar el índice
+    delete[] arr;
+    arr = new int[capacidad];  // Crear un nuevo arreglo vacío
+    Cuadrada = false;
+    i = 0;  // Reiniciar índice para nueva captura
+    
+    estadoAC1 = 1;  // Continuar tomando datos
+    estadoAC2 = 0;  // Reiniciar el estado de mostrar
+  }
 }
+
+//Funciones
+
+// Función para redimensionar el arreglo
+void redArr(int*& arr, int& capacidad) {
+  int nuevaCap = capacidad * 2;
+  int* nuevoArr = new int[nuevaCap];
+  for (int i = 0; i < capacidad; i++) {
+    nuevoArr[i] = arr[i];
+  }
+  delete[] arr;
+  arr = nuevoArr;
+  capacidad = nuevaCap;
+}
+
+// Función para detectar si la señal es cuadrada
+bool senalCuadrada(int* arr, int size) {
+  int numerosUnicos = 0;
+  int unicos[4];
+
+  for (int i = 0; i < size; i++) {
+    int j = 0;
+    for (j = 0; j < numerosUnicos; j++) {
+      if (arr[i] == unicos[j]) {
+        j = numerosUnicos;
+      }
+    }
+    if (j == numerosUnicos) {
+      unicos[numerosUnicos++] = arr[i];
+      if (numerosUnicos > 4) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
