@@ -69,6 +69,20 @@ void loop() {
     delay(5000);
     lcd_1.clear();
 
+    // Mostrar frecuencia y amplitud
+    float amplitud = medirAmplitud(arr, i);
+    lcd_1.setCursor(0, 0);
+    lcd_1.print("Freq: ");
+    lcd_1.print(frecuencia);
+    lcd_1.print(" Hz");
+    lcd_1.setCursor(0, 1);
+    lcd_1.print("Amp: ");
+    lcd_1.print(amplitud);
+    lcd_1.print(" V");
+    delay(5000);
+    lcd_1.clear();
+
+
     // Limpiar el arreglo y reiniciar el índice
     delete[] arr;
     arr = new int[capacidad];  // Crear un nuevo arreglo vacío
@@ -114,5 +128,23 @@ bool senalCuadrada(int* arr, int size) {
     }
   }
   return true;
+}
+
+// Función para medir la amplitud
+float medirAmplitud(int* arr, int size) {
+  int valorMaximo = 0;
+  int valorMinimo = 1023;
+
+  for (int i = 0; i < size; i++) {
+    if (arr[i] > valorMaximo) {
+      valorMaximo = arr[i];
+    }
+    if (arr[i] < valorMinimo) {
+      valorMinimo = arr[i];
+    }
+  }
+
+  float amplitud = (valorMaximo - valorMinimo) * (5.0 / 1023.0); // Convertir a voltios
+  return amplitud;
 }
 
