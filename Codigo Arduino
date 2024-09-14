@@ -13,6 +13,16 @@ int i = 0;
 
 bool Cuadrada = 0;
 
+//Variables para medir tiempos
+unsigned long tiempo_corte1=0;
+unsigned long tiempo_corte2 = 0;
+unsigned long tiempo_actual;
+float periodo=0;
+int p=0;
+float frecuencia = 0;
+int val_antes = 0;
+
+
 LiquidCrystal lcd_1(12, 11, 5, 4, 3, 2);
 
 void setup() {
@@ -39,11 +49,25 @@ void loop() {
 
     // Capturar datos, verificar que no se salga del límite de capacidad
     if (i < capacidad) {
+      tiempo_actual = millis();
       val = analogRead(analogPin);
       Serial.println(val);
       arr[i] = val;
+      if(i!=0)val_antes = arr[i-1];
       i++;
-    } else {
+      
+      if((val_antes<0 and val>=0)){
+      	p++;
+        if(p==1)tiempo_corte1 = tiempo_actual;
+        if(p==2){
+          tiempo_corte2 = tiempo_actual;
+          periodo = (tiempo_corte2-tiempo_corte1)/1000.0;
+      	  frecuencia = 1/periodo;
+        }
+      }
+    } 
+    
+    else {
       redArr(arr, capacidad);  // Redimensionar si es necesario
     }
 
@@ -63,11 +87,28 @@ void loop() {
     Cuadrada = senalCuadrada(arr, i);  // Pasar tamaño actual de datos (i)
     if (Cuadrada) {
       lcd_1.print("Cuadrada");
-    } else {
-      lcd_1.print("No Cuadrada");
+    } 
+    
+    else {
+      lcd_1.print(p);
     }
     delay(5000);
     lcd_1.clear();
+    
+    // Mostrar frecuencia y amplitud
+//    float frecuencia = medirFrecuencia(arr, i);
+    float amplitud = medirAmplitud(arr, i);
+    lcd_1.setCursor(0, 0);
+    lcd_1.print("Freq: ");
+    lcd_1.print(frecuencia);
+    lcd_1.print(" Hz");
+    lcd_1.setCursor(0, 1);
+    lcd_1.print("Amp: ");
+    lcd_1.print(amplitud);
+    lcd_1.print(" V");
+    delay(5000);
+    lcd_1.clear();
+
 
     // Mostrar frecuencia y amplitud
     float amplitud = medirAmplitud(arr, i);
@@ -91,10 +132,11 @@ void loop() {
     
     estadoAC1 = 1;  // Continuar tomando datos
     estadoAC2 = 0;  // Reiniciar el estado de mostrar
+    
+    p=0;
+    tiempo_actual = millis();
   }
 }
-
-//Funciones
 
 // Función para redimensionar el arreglo
 void redArr(int*& arr, int& capacidad) {
@@ -147,4 +189,3 @@ float medirAmplitud(int* arr, int size) {
   float amplitud = (valorMaximo - valorMinimo) * (5.0 / 1023.0); // Convertir a voltios
   return amplitud;
 }
-
