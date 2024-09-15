@@ -8,19 +8,14 @@ int mostrarDatos = 8;
 int estadoAC1 = 0;  // Estado para capturar datos
 int estadoAC2 = 0;  // Estado para mostrar datos
 int capacidad = 100;
-int* arr = new int[capacidad];
+int** arr;  // Declarar la matriz aquí, pero la inicialización se hará en setup()
 int i = 0;
+int corte1=0;
 
-bool Cuadrada = 0;
 
-//Variables para medir tiempos
-unsigned long tiempo_corte1=0;
-unsigned long tiempo_corte2 = 0;
-unsigned long tiempo_actual;
-float periodo=0;
-int p=0;
-float frecuencia = 0;
-int val_antes = 0;
+// Variables para medir tiempos
+float tiempo_actual;
+float inicio=0;
 
 
 LiquidCrystal lcd_1(12, 11, 5, 4, 3, 2);
@@ -33,6 +28,13 @@ void setup() {
   pinMode(mostrarDatos, INPUT);
   delay(2000);
   lcd_1.clear();
+  inicio = millis();
+
+  // Inicializar la matriz aquí en el setup()
+  arr = new int*[2];
+  for (int j = 0; j < 2; j++) {
+    arr[j] = new int[capacidad];
+  }
 }
 
 void loop() {
@@ -49,26 +51,16 @@ void loop() {
 
     // Capturar datos, verificar que no se salga del límite de capacidad
     if (i < capacidad) {
-      tiempo_actual = millis();
+      tiempo_actual = millis()-inicio;
       val = analogRead(analogPin);
       Serial.println(val);
-      arr[i] = val;
-      if(i!=0)val_antes = arr[i-1];
+      arr[0][i] = val;  // Guardar valor en la primera fila
+      arr[1][i] = tiempo_actual;  // Guardar el tiempo en la segunda fila
       i++;
       
-      if((val_antes<0 and val>=0)){
-      	p++;
-        if(p==1)tiempo_corte1 = tiempo_actual;
-        if(p==2){
-          tiempo_corte2 = tiempo_actual;
-          periodo = (tiempo_corte2-tiempo_corte1)/1000.0;
-      	  frecuencia = 1/periodo;
-        }
-      }
     } 
-    
     else {
-      redArr(arr, capacidad);  // Redimensionar si es necesario
+      redimensionarMatriz(arr, capacidad);  // Redimensionar si es necesario
     }
 
     // Verificar si se presiona el pulsador para mostrar datos
@@ -84,20 +76,24 @@ void loop() {
     lcd_1.setCursor(0, 0);
     lcd_1.print("Tipo de senal");
     lcd_1.setCursor(0, 1);
-    Cuadrada = senalCuadrada(arr, i);  // Pasar tamaño actual de datos (i)
+    bool Cuadrada = senalCuadrada(arr, i);  // Pasar tamaño actual de datos (i)
+    bool Triangular = senalTriangular(arr,i);
     if (Cuadrada) {
       lcd_1.print("Cuadrada");
     } 
-    
-    else {
-      lcd_1.print(p);
+    else if(Triangular){
+    	lcd_1.print("Triangular");
     }
+    else {
+      lcd_1.print("Desconocida");
+    }
+
     delay(5000);
     lcd_1.clear();
-    
+
     // Mostrar frecuencia y amplitud
-//    float frecuencia = medirFrecuencia(arr, i);
     float amplitud = medirAmplitud(arr, i);
+    float frecuencia =medirFrecuencia(arr,i);
     lcd_1.setCursor(0, 0);
     lcd_1.print("Freq: ");
     lcd_1.print(frecuencia);
@@ -109,61 +105,59 @@ void loop() {
     delay(5000);
     lcd_1.clear();
 
-
-    // Mostrar frecuencia y amplitud
-    float amplitud = medirAmplitud(arr, i);
-    lcd_1.setCursor(0, 0);
-    lcd_1.print("Freq: ");
-    lcd_1.print(frecuencia);
-    lcd_1.print(" Hz");
-    lcd_1.setCursor(0, 1);
-    lcd_1.print("Amp: ");
-    lcd_1.print(amplitud);
-    lcd_1.print(" V");
-    delay(5000);
-    lcd_1.clear();
-
-
-    // Limpiar el arreglo y reiniciar el índice
-    delete[] arr;
-    arr = new int[capacidad];  // Crear un nuevo arreglo vacío
+    // Limpiar la matriz y reiniciar el índice
+    liberarMatriz(arr);
+    arr = new int*[2];
+    for (int j = 0; j < 2; j++) {
+      arr[j] = new int[capacidad];  // Crear una nueva matriz vacía
+    }
     Cuadrada = false;
     i = 0;  // Reiniciar índice para nueva captura
-    
+
     estadoAC1 = 1;  // Continuar tomando datos
     estadoAC2 = 0;  // Reiniciar el estado de mostrar
-    
-    p=0;
-    tiempo_actual = millis();
+    inicio = millis();
   }
 }
 
-// Función para redimensionar el arreglo
-void redArr(int*& arr, int& capacidad) {
-  int nuevaCap = capacidad * 2;
-  int* nuevoArr = new int[nuevaCap];
-  for (int i = 0; i < capacidad; i++) {
-    nuevoArr[i] = arr[i];
+// Función para redimensionar la matriz
+void redimensionarMatriz(int**& arr, int& capacidad) {
+  int nuevaCap = capacidad + 100;
+  int** nuevoArr = new int*[2];
+  for (int j = 0; j < 2; j++) {
+    nuevoArr[j] = new int[nuevaCap];
+    for (int i = 0; i < capacidad; i++) {
+      nuevoArr[j][i] = arr[j][i];
+    }
   }
-  delete[] arr;
+  liberarMatriz(arr);
   arr = nuevoArr;
   capacidad = nuevaCap;
 }
 
+// Función para liberar la matriz
+void liberarMatriz(int**& arr) {
+  for (int i = 0; i < 2; i++) {
+    delete[] arr[i];
+  }
+  delete[] arr;
+  arr = nullptr;
+}
+
 // Función para detectar si la señal es cuadrada
-bool senalCuadrada(int* arr, int size) {
+bool senalCuadrada(int** arr, int size) {
   int numerosUnicos = 0;
   int unicos[4];
 
   for (int i = 0; i < size; i++) {
     int j = 0;
     for (j = 0; j < numerosUnicos; j++) {
-      if (arr[i] == unicos[j]) {
+      if (arr[0][i] == unicos[j]) {
         j = numerosUnicos;
       }
     }
     if (j == numerosUnicos) {
-      unicos[numerosUnicos++] = arr[i];
+      unicos[numerosUnicos++] = arr[0][i];
       if (numerosUnicos > 4) {
         return false;
       }
@@ -173,19 +167,110 @@ bool senalCuadrada(int* arr, int size) {
 }
 
 // Función para medir la amplitud
-float medirAmplitud(int* arr, int size) {
+float medirAmplitud(int** arr, int size) {
   int valorMaximo = 0;
   int valorMinimo = 1023;
 
   for (int i = 0; i < size; i++) {
-    if (arr[i] > valorMaximo) {
-      valorMaximo = arr[i];
+    if (arr[0][i] > valorMaximo) {
+      valorMaximo = arr[0][i];
     }
-    if (arr[i] < valorMinimo) {
-      valorMinimo = arr[i];
+    if (arr[0][i] < valorMinimo) {
+      valorMinimo = arr[0][i];
     }
   }
 
-  float amplitud = (valorMaximo - valorMinimo) * (5.0 / 1023.0); // Convertir a voltios
+  float amplitud = (valorMaximo - valorMinimo) * (5.0 / 1023.0);  // Convertir a voltios
   return amplitud;
+}
+
+int indiceMax(int **arr,int size){
+  int indice = 0,valorMax = 0;
+  for(indice;indice<size;indice++){
+    if(arr[0][indice]<arr[0][indice+1]){
+    	valorMax = arr[0][indice+1];
+      	if(valorMax>=arr[0][indice+2]){
+      		return indice+1;
+      	}
+    }
+  }
+}
+
+int indiceMin(int **arr,int size){
+	int indice=0,valorMin = 0;
+  	for(indice;indice<size;indice++){
+      if(arr[0][indice]>arr[0][indice+1]){
+      	valorMin = arr[0][indice+1];
+        if(valorMin<=arr[0][indice+2]){
+        	return indice+1;
+        }
+      }
+  }
+}
+
+int indiceCero(int **arr,int size){
+	int indice = 0;
+  	for(indice;indice<size;indice++){
+        if((arr[0][indice-1]<0)and(arr[0][indice]>=0)) break;
+    }
+  return indice+1;
+}
+
+bool senalTriangular(int **arr,int size){
+  float pendiente1=0,pendiente2=0,y1=0,y2=0;
+  float cambio=0,promCambios=0;
+  int i1 = indiceMin(arr,size);
+  int i2 = indiceMax(arr,size);
+  int i=0,j=0;
+  
+  if(i2>i1){
+  	i=i1;
+    j=i2;  
+  }
+  
+  else{
+  i=i2;
+  j=i1;  
+  }
+   
+  for( i;i<j;i++){
+  	y1 = arr[0][i]-arr[0][i+1];
+    y2 = arr[0][i+1]-arr[0][i+2];
+    if(y1!=0 and y2!=0){
+    	pendiente1 = (arr[1][i]-arr[1][i+1])/y1;
+    	pendiente2 = (arr[1][i+1]-arr[1][i+2])/y2;
+    
+    	cambio = cambio + abs(pendiente2-pendiente1);
+    }
+
+  }
+  promCambios = cambio/j;
+  if(promCambios<0.3){
+  	return true;
+  }
+}
+
+//Funcion que calcula la frecuencia de la señal
+float medirFrecuencia(int **arr,int size){
+	float periodo=0.0,frecuencia=0.0;
+    int contador=0,valorActual=0,tiempo1=0,tiempo2=0,r=0;
+      
+    for(int i=0;i<size;i++){
+      
+      if((arr[0][i-1]<0)and(arr[0][i]>=0)and i!=0){
+      	contador++;
+        if(contador==1){
+      		tiempo1=arr[1][i];
+          	r=arr[0][i];
+      	}
+        if(contador==2){
+      		tiempo2=arr[1][i];
+          	r=arr[0][i];
+        	periodo = (tiempo2-tiempo1)/1000.0;
+        	frecuencia = 1/periodo;
+        	return frecuencia;
+      	}
+      }
+          
+    }  
 }
