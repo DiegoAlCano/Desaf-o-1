@@ -274,3 +274,25 @@ float medirFrecuencia(int **arr,int size){
           
     }  
 }
+
+bool esSenal(int **arr, int size){
+	int picos=0,valles=0,maximo,tiempo=0;
+  	int promMaximos=0;
+  
+  	for(int i=1;i<size;i++){
+  			
+      if(arr[0][i-1]<arr[0][i] and arr[0][i]>=arr[0][i+1]){
+        maximo = arr[0][i];
+        promMaximos = promMaximos + maximo;
+        picos++;
+      
+  	  }
+   }  
+      
+   promMaximos  = promMaximos/picos;
+  	
+   if(promMaximos>=maximo-2 and promMaximos<=maximo+2){
+  	 return true;
+   }
+ return false;	
+}
