@@ -1,22 +1,33 @@
-#include <LiquidCrystal.h>
-
 int analogPin = 0;
 int val = 0;
 int leerDatos = 13;
+byte crucesCero=0;
 int mostrarDatos = 8;
 
 int estadoAC1 = 0;  // Estado para capturar datos
 int estadoAC2 = 0;  // Estado para mostrar datos
-int capacidad = 100;
-int** arr;  // Declarar la matriz aquí, pero la inicialización se hará en setup()
+int capacidad = 200;
+int* arr = new int[capacidad];
 int i = 0;
-int corte1=0;
 
+bool Cuadrada = false;
+bool Senoidal = false;
+bool Triangular = false;
 
-// Variables para medir tiempos
-float tiempo_actual;
-float inicio=0;
+float amplitud_anterior = 0;
+float frecuencia_anterior = 0;
+float frecuencia_actual = 0;
 
+bool Cuadrada_anterior = false;
+bool Senoidal_anterior = false;
+bool Triangular_anterior = false;
+
+short unsigned int contadores[4] = {0,0,0};
+
+//Variables para medir tiempos
+unsigned long tiempo_actual;
+int tiempo1 = 0;
+int tiempo2 = 0;
 
 LiquidCrystal lcd_1(12, 11, 5, 4, 3, 2);
 
@@ -28,13 +39,6 @@ void setup() {
   pinMode(mostrarDatos, INPUT);
   delay(2000);
   lcd_1.clear();
-  inicio = millis();
-
-  // Inicializar la matriz aquí en el setup()
-  arr = new int*[2];
-  for (int j = 0; j < 2; j++) {
-    arr[j] = new int[capacidad];
-  }
 }
 
 void loop() {
@@ -51,24 +55,84 @@ void loop() {
 
     // Capturar datos, verificar que no se salga del límite de capacidad
     if (i < capacidad) {
-      tiempo_actual = millis()-inicio;
+      tiempo_actual = millis();
       val = analogRead(analogPin);
       Serial.println(val);
-      arr[0][i] = val;  // Guardar valor en la primera fila
-      arr[1][i] = tiempo_actual;  // Guardar el tiempo en la segunda fila
-      i++;
+      arr[i] = val;
       
+      if(i!=0){
+        if(arr[i-1]<0 and arr[i]>=0){
+        	crucesCero++;
+          	if(crucesCero==1){
+          		tiempo1 = tiempo_actual;
+          	}
+          	else if(crucesCero==2){
+          		tiempo2 = tiempo_actual;
+              	frecuencia_actual = 1000.0/(tiempo2-tiempo1);
+          	}
+        }
+      }	
+      i++;
     } 
-    else {
-      redimensionarMatriz(arr, capacidad);  // Redimensionar si es necesario
-    }
+    
+    if(crucesCero==2) { //Se toman los datos por cada ciclo que haga la señal
+      crucesCero = 0; //Se resetea el contador crucesCero
+      // Cuando el arreglo está lleno, calcular la amplitud y la frecuencia
+      float amplitud_actual = medirAmplitud(arr, i);
 
-    // Verificar si se presiona el pulsador para mostrar datos
-    if (digitalRead(mostrarDatos) == HIGH) {
-      estadoAC1 = 0;  // Desactivar el estado de captura
-      estadoAC2 = 1;  // Activar el estado de mostrar datos
-      lcd_1.clear();
+      // Detectar el tipo de señal del arreglo actual
+      Cuadrada = senalCuadrada(arr, i);
+      Senoidal = senalSenoidal(arr, i);
+      Triangular = senalTriangular(arr, i);
+
+      // Comparar con el arreglo anterior
+      if (amplitud_anterior != 0) {
+       	if(frecuencia_actual<=frecuencia_anterior+frecuencia_anterior*0.51 and frecuencia_actual>=frecuencia_anterior-frecuencia_anterior*0.51){
+        	if(amplitud_actual<=amplitud_anterior+amplitud_anterior*0.51 and amplitud_actual>=amplitud_anterior-amplitud_anterior*0.51){
+            	if (Cuadrada){
+					contadores[0]++;
+       			 }
+        		else if (Senoidal){
+					contadores[1]++;
+        		}
+        		else if (Triangular){
+					contadores[2]++;
+        		}
+        		else{
+          			contadores[3]++;
+        		}
+            }
+          	else{
+          		contadores[3]++;
+          	}
+              
+        }
+        else{
+        	contadores[3]++;
+        }
+      
+      }
+
+      // Guardar los datos actuales como los anteriores para la siguiente comparación
+      amplitud_anterior = amplitud_actual;
+      frecuencia_anterior = frecuencia_actual;
+      Cuadrada_anterior = Cuadrada;
+      Senoidal_anterior = Senoidal;
+      Triangular_anterior = Triangular;
+
+      // Reiniciar el arreglo para capturar nuevos datos
+      delete[] arr;
+      arr = new int[capacidad];
+      i = 0;  // Reiniciar índice para nueva captura
+      tiempo_actual = millis();  // Reiniciar el tiempo de captura
     }
+  }
+
+  // Verificar si se presiona el pulsador para mostrar datos
+  if (digitalRead(mostrarDatos) == HIGH) {
+    estadoAC1 = 0;  // Desactivar el estado de captura
+    estadoAC2 = 1;  // Activar el estado de mostrar datos
+    lcd_1.clear();
   }
 
   // Si está en estado de mostrar datos
@@ -76,88 +140,63 @@ void loop() {
     lcd_1.setCursor(0, 0);
     lcd_1.print("Tipo de senal");
     lcd_1.setCursor(0, 1);
-    bool Cuadrada = senalCuadrada(arr, i);  // Pasar tamaño actual de datos (i)
-    bool Triangular = senalTriangular(arr,i);
-    if (Cuadrada) {
+   
+    int indice = indiceMax(contadores,4);
+      
+    if (indice==0) {
       lcd_1.print("Cuadrada");
-    } 
-    else if(Triangular){
-    	lcd_1.print("Triangular");
-    }
-    else {
+    } else if (indice == 1) {
+      lcd_1.print("Senoidal");
+    } else if (indice == 2) {
+      lcd_1.print("Triangular");
+    } else if(indice==3) {
       lcd_1.print("Desconocida");
     }
-
     delay(5000);
     lcd_1.clear();
 
     // Mostrar frecuencia y amplitud
-    float amplitud = medirAmplitud(arr, i);
-    float frecuencia =medirFrecuencia(arr,i);
-    lcd_1.setCursor(0, 0);
-    lcd_1.print("Freq: ");
-    lcd_1.print(frecuencia);
-    lcd_1.print(" Hz");
-    lcd_1.setCursor(0, 1);
-    lcd_1.print("Amp: ");
-    lcd_1.print(amplitud);
-    lcd_1.print(" V");
-    delay(5000);
-    lcd_1.clear();
-
-    // Limpiar la matriz y reiniciar el índice
-    liberarMatriz(arr);
-    arr = new int*[2];
-    for (int j = 0; j < 2; j++) {
-      arr[j] = new int[capacidad];  // Crear una nueva matriz vacía
+    if(indice == 0 or indice == 1 or indice == 2){
+    	lcd_1.setCursor(0, 0);
+    	lcd_1.print("Freq: ");
+    	lcd_1.print(frecuencia_anterior);
+    	lcd_1.print(" Hz");
+    	lcd_1.setCursor(0, 1);
+    	lcd_1.print("Amp: ");
+    	lcd_1.print(amplitud_anterior);
+    	lcd_1.print(" V");
+    	delay(5000);
+    	lcd_1.clear();
     }
-    Cuadrada = false;
+
+    // Limpiar el arreglo y reiniciar el índice
+    delete[] arr;
+    arr = new int[capacidad];  // Crear un nuevo arreglo vacío
     i = 0;  // Reiniciar índice para nueva captura
+    for(int k=0;k<4;k++){ //resetea el arreglo de contadores
+    	contadores[k]=0;
+    }
 
     estadoAC1 = 1;  // Continuar tomando datos
     estadoAC2 = 0;  // Reiniciar el estado de mostrar
-    inicio = millis();
+    tiempo_actual = millis();
   }
-}
-
-// Función para redimensionar la matriz
-void redimensionarMatriz(int**& arr, int& capacidad) {
-  int nuevaCap = capacidad + 100;
-  int** nuevoArr = new int*[2];
-  for (int j = 0; j < 2; j++) {
-    nuevoArr[j] = new int[nuevaCap];
-    for (int i = 0; i < capacidad; i++) {
-      nuevoArr[j][i] = arr[j][i];
-    }
-  }
-  liberarMatriz(arr);
-  arr = nuevoArr;
-  capacidad = nuevaCap;
-}
-
-// Función para liberar la matriz
-void liberarMatriz(int**& arr) {
-  for (int i = 0; i < 2; i++) {
-    delete[] arr[i];
-  }
-  delete[] arr;
-  arr = nullptr;
 }
 
 // Función para detectar si la señal es cuadrada
-bool senalCuadrada(int** arr, int size) {
+bool senalCuadrada(int* arr, int size) {
   int numerosUnicos = 0;
   int unicos[4];
 
   for (int i = 0; i < size; i++) {
     int j = 0;
     for (j = 0; j < numerosUnicos; j++) {
-      if (arr[0][i] == unicos[j]) {
+      if (arr[i] == unicos[j]) {
         j = numerosUnicos;
       }
     }
     if (j == numerosUnicos) {
-      unicos[numerosUnicos++] = arr[0][i];
+      unicos[numerosUnicos++] = arr[i];
       if (numerosUnicos > 4) {
         return false;
       }
@@ -166,17 +205,18 @@ bool senalCuadrada(int** arr, int size) {
   return true;
 }
 
+
 // Función para medir la amplitud
-float medirAmplitud(int** arr, int size) {
+float medirAmplitud(int* arr, int size) {
   int valorMaximo = 0;
   int valorMinimo = 1023;
 
   for (int i = 0; i < size; i++) {
-    if (arr[0][i] > valorMaximo) {
-      valorMaximo = arr[0][i];
+    if (arr[i] > valorMaximo) {
+      valorMaximo = arr[i];
     }
-    if (arr[0][i] < valorMinimo) {
-      valorMinimo = arr[0][i];
+    if (arr[i] < valorMinimo) {
+      valorMinimo = arr[i];
     }
   }
 
@@ -184,115 +224,77 @@ float medirAmplitud(int** arr, int size) {
   return amplitud;
 }
 
-int indiceMax(int **arr,int size){
-  int indice = 0,valorMax = 0;
+
+//Funcion de ayuda para sacar la raiz cuadrada
+float raizCuadradaAprox(int num) {
+  float estimacion = num / 2.0;  // Estimación inicial
+  float precision = 0.00001;       // Ajustar la precisión según lo necesario
+
+  // Iterar hasta que la estimación sea suficientemente precisa
+  while ((estimacion - num / estimacion) > precision || (num / estimacion - estimacion) > precision) {
+    estimacion = (estimacion + num / estimacion) / 2.0;
+  }
+
+  return estimacion;
+}
+
+int indiceMax(short unsigned int *arr,int size){
+  int indice = 0,valorMax = 0,indiceMax=0;
+  valorMax = arr[0];
   for(indice;indice<size;indice++){
-    if(arr[0][indice]<arr[0][indice+1]){
-    	valorMax = arr[0][indice+1];
-      	if(valorMax>=arr[0][indice+2]){
-      		return indice+1;
-      	}
+    if(valorMax<arr[indice]){
+    	valorMax = arr[indice];
+      	indiceMax = indice;
     }
   }
+  return indiceMax;
 }
 
-int indiceMin(int **arr,int size){
-	int indice=0,valorMin = 0;
-  	for(indice;indice<size;indice++){
-      if(arr[0][indice]>arr[0][indice+1]){
-      	valorMin = arr[0][indice+1];
-        if(valorMin<=arr[0][indice+2]){
-        	return indice+1;
-        }
-      }
-  }
-}
-
-int indiceCero(int **arr,int size){
-	int indice = 0;
-  	for(indice;indice<size;indice++){
-        if((arr[0][indice-1]<0)and(arr[0][indice]>=0)) break;
-    }
-  return indice+1;
-}
-
-bool senalTriangular(int **arr,int size){
-  float pendiente1=0,pendiente2=0,y1=0,y2=0;
-  float cambio=0,promCambios=0;
-  int i1 = indiceMin(arr,size);
-  int i2 = indiceMax(arr,size);
-  int i=0,j=0;
+bool senalSenoidal(int* arr, int size) {
+  int cambiosSuaves = 0;
+  int totalCambios = 0;
   
-  if(i2>i1){
-  	i=i1;
-    j=i2;  
-  }
-  
-  else{
-  i=i2;
-  j=i1;  
-  }
-   
-  for( i;i<j;i++){
-  	y1 = arr[0][i]-arr[0][i+1];
-    y2 = arr[0][i+1]-arr[0][i+2];
-    if(y1!=0 and y2!=0){
-    	pendiente1 = (arr[1][i]-arr[1][i+1])/y1;
-    	pendiente2 = (arr[1][i+1]-arr[1][i+2])/y2;
+  for (int i = 1; i < size - 1; i++) {
+    int dif1 = arr[i] - arr[i - 1];
+    int dif2 = arr[i + 1] - arr[i];
     
-    	cambio = cambio + abs(pendiente2-pendiente1);
+    if (abs(dif2 - dif1) < 15) {  // Ajustar umbral
+      cambiosSuaves++;
     }
-
+    totalCambios++;
   }
-  promCambios = cambio/j;
-  if(promCambios<0.3){
-  	return true;
+
+  float proporcionSuave = (float)cambiosSuaves / totalCambios;
+  return proporcionSuave > 0.9;  // Ajustar proporción
+}
+
+bool senalTriangular(int* arr, int size) {
+  int picos = 0;
+  int valles = 0;
+  int umbralCambio = 15;  // Ajustar umbral
+  int tolerancia = 5;     // Ajustar tolerancia
+
+  bool enSubida = false;
+  bool enBajada = false;
+
+  for (int i = 1; i < size - 1; i++) {
+    int dif1 = arr[i] - arr[i - 1];
+    int dif2 = arr[i + 1] - arr[i];
+
+    if ((dif1 > umbralCambio - tolerancia && dif2 < -(umbralCambio - tolerancia)) || 
+        (dif1 > umbralCambio && dif2 < -umbralCambio)) {
+      picos++;
+      enSubida = false;
+      enBajada = true;
+    } else if ((dif1 < -(umbralCambio - tolerancia) && dif2 > umbralCambio - tolerancia) || 
+               (dif1 < -umbralCambio && dif2 > umbralCambio)) {
+      valles++;
+      enSubida = true;
+      enBajada = false;
+    }
   }
+
+  float umbralPicosValles = size / 20.0;  // Ajustar umbral dinámico
+  return (picos >= umbralPicosValles && valles >= umbralPicosValles);
 }
 
-//Funcion que calcula la frecuencia de la señal
-float medirFrecuencia(int **arr,int size){
-	float periodo=0.0,frecuencia=0.0;
-    int contador=0,valorActual=0,tiempo1=0,tiempo2=0,r=0;
-      
-    for(int i=0;i<size;i++){
-      
-      if((arr[0][i-1]<0)and(arr[0][i]>=0)and i!=0){
-      	contador++;
-        if(contador==1){
-      		tiempo1=arr[1][i];
-          	r=arr[0][i];
-      	}
-        if(contador==2){
-      		tiempo2=arr[1][i];
-          	r=arr[0][i];
-        	periodo = (tiempo2-tiempo1)/1000.0;
-        	frecuencia = 1/periodo;
-        	return frecuencia;
-      	}
-      }
-          
-    }  
-}
-
-bool esSenal(int **arr, int size){
-	int picos=0,valles=0,maximo,tiempo=0;
-  	int promMaximos=0;
-  
-  	for(int i=1;i<size;i++){
-  			
-      if(arr[0][i-1]<arr[0][i] and arr[0][i]>=arr[0][i+1]){
-        maximo = arr[0][i];
-        promMaximos = promMaximos + maximo;
-        picos++;
-      
-  	  }
-   }  
-      
-   promMaximos  = promMaximos/picos;
-  	
-   if(promMaximos>=maximo-2 and promMaximos<=maximo+2){
-  	 return true;
-   }
- return false;	
-}
