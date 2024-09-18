@@ -87,9 +87,7 @@ void loop() {
       
       Cuadrada = senalCuadrada(arregloVal, cantidadVal);
       Triangular = senalTriangular(arregloVal, cantidadVal,amplitudActual,frecuenciaActual);      
-      Senoidal = senalSenoidal(arregloVal, cantidadVal,amplitudActual,frecuenciaActual);
-      
-      
+      Senoidal = senalSenoidal(arregloVal, cantidadVal,amplitudActual,frecuenciaActual);    
       
       indetificarCoincidencias(frecuenciaActual,frecuenciaAnterior,amplitudActual,amplitudAnterior,contadores,Cuadrada,Senoidal,Triangular);
 
@@ -97,11 +95,7 @@ void loop() {
       amplitudAnterior = amplitudActual;
       frecuenciaAnterior = frecuenciaActual;
 
-      // Reiniciar el arreglo para capturar nuevos datos
-      delete[] arregloVal;
-      arregloVal = new int[capacidad];
-      cantidadVal = 0;  // Reiniciar índice para nueva captura
-      tiempo_actual = millis();  // Reiniciar el tiempo de captura
+      Reseteo(arregloVal,capacidad,cantidadVal,tiempo_actual);
     }
   }
 
@@ -146,18 +140,14 @@ void loop() {
     	lcd_1.clear();
     }
 
-    // Limpiar el arreglo y reiniciar el índice
-    delete[] arregloVal;
-    arregloVal = new int[capacidad];  // Crear un nuevo arreglo vacío
-    cantidadVal = 0;  // Reiniciar índice para nueva captura
-	for(int k=0;k<4;k++){ //resetea el arreglo de contadores
-    	contadores[k]=0;
+    Reseteo(arregloVal,capacidad,cantidadVal,tiempo_actual);
+    // Reiniciar el arreglo de contadores
+    for (int k = 0; k < 4; k++) {
+        contadores[k] = 0;
     }
-    
     
     estadoAC1 = 1;  // Continuar tomando datos
     estadoAC2 = 0;  // Reiniciar el estado de mostrar
-    tiempo_actual = millis();
   }
 }
 
@@ -303,3 +293,15 @@ void indetificarCoincidencias(float frecuenciaActual,float frecuenciaAnterior,fl
       
       }
 }
+
+void Reseteo(int*& arregloVal, int capacidad, int& cantidadVal,unsigned int& tiempo_actual) {
+    // Limpiar el arreglo
+    delete[] arregloVal;
+    // Crear un nuevo arreglo vacío con la capacidad especificada
+    arregloVal = new int[capacidad];
+    // Reiniciar el índice para la nueva captura de datos
+    cantidadVal = 0;
+    // Reiniciar el tiempo actual
+    tiempo_actual = millis();
+}
+
