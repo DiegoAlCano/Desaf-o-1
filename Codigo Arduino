@@ -24,7 +24,7 @@ float frecuenciaActual = 0;
 float periodo = 0;
 
 //arreglos 
-short unsigned int contadores[4] = {0,0,0};
+short unsigned int contadores[4] = {0,0,0,0};
 int* arregloVal = new int[capacidad];
 
 //Variables para medir tiempos
@@ -80,9 +80,9 @@ void loop() {
       cantidadVal++;
     } 
     
-    else{ 
+    if(crucesCero==2){ 
       crucesCero = 0; //Se resetea el contador crucesCero
-      // Cuando el arreglo está lleno, calcular la amplitud y la frecuencia
+      
       float amplitudActual = medirAmplitud(arregloVal, cantidadVal);
       
       Cuadrada = senalCuadrada(arregloVal, cantidadVal);
@@ -94,7 +94,7 @@ void loop() {
       // Guardar los datos actuales como los anteriores para la siguiente comparación
       amplitudAnterior = amplitudActual;
       frecuenciaAnterior = frecuenciaActual;
-
+      //Reiniciar variables y arreglo para nueva toma de datos
       Reseteo(arregloVal,capacidad,cantidadVal,tiempo_actual);
     }
   }
@@ -181,9 +181,6 @@ float medirAmplitud(int* arr, int size) {
   for (int i = 0; i < size; i++) {
     if (arr[i] > valorMaximo) {
       valorMaximo = arr[i];
-      if(arr[i+1]<valorMaximo){
-      	break;
-      }
     }
    	
   }
@@ -192,7 +189,7 @@ float medirAmplitud(int* arr, int size) {
   return amplitud;
 }
 
-//Funcion que verifica si es senoidal
+//Funcion que verifica si es senoidal a altas frecuencias
 bool senalSenoidal(int *arr,int size,float amplitud,float frecuencia){
   float cambio=0,promCambios=0,totalCambios=0;
   float valorMax = 0;
@@ -263,7 +260,7 @@ int indiceMax(short unsigned int *arr, int size) {
     return indiceMax;  
 }
 
-void indetificarCoincidencias(float frecuenciaActual,float frecuenciaAnterior,float amplitudActual,float amplitudAnterior,short unsigned int *arregloVal,bool Cuadrada,bool Senoidal,bool Triangulo){
+void indetificarCoincidencias(float frecuenciaActual,float frecuenciaAnterior,float amplitudActual,float amplitudAnterior,short unsigned int *contadores,bool Cuadrada,bool Senoidal,bool Triangulo){
 
       // Comparar con el arreglo anterior
       if (amplitudAnterior != 0) {
@@ -304,4 +301,3 @@ void Reseteo(int*& arregloVal, int capacidad, int& cantidadVal,unsigned int& tie
     // Reiniciar el tiempo actual
     tiempo_actual = millis();
 }
-
