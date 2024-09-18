@@ -192,7 +192,7 @@ float medirAmplitud(int* arr, int size) {
   return amplitud;
 }
 
-//Funcion que verifica si es senoidal a altas frecuencias
+//Funcion que verifica si es senoidal
 bool senalSenoidal(int *arr,int size,float amplitud,float frecuencia){
   float cambio=0,promCambios=0,totalCambios=0;
   float valorMax = 0;
@@ -263,7 +263,7 @@ int indiceMax(short unsigned int *arr, int size) {
     return indiceMax;  
 }
 
-void indetificarCoincidencias(float frecuenciaActual,float frecuenciaAnterior,float amplitudActual,float amplitudAnterior,short unsigned int *contadores,bool Cuadrada,bool Senoidal,bool Triangulo){
+void indetificarCoincidencias(float frecuenciaActual,float frecuenciaAnterior,float amplitudActual,float amplitudAnterior,short unsigned int *arregloVal,bool Cuadrada,bool Senoidal,bool Triangulo){
 
       // Comparar con el arreglo anterior
       if (amplitudAnterior != 0) {
