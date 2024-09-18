@@ -201,27 +201,7 @@ float medirAmplitud(int* arr, int size) {
   float amplitud = valorMaximo/100.0;  // Convertir a voltios
   return amplitud;
 }
-/*
-//Funcion que indentifica si la señal es senoidal en bajas frecuencias
-bool senalSenoidal(int* arr, int size) {
-  int cambiosSuaves = 0;
-  int totalCambios = 0;
-  
-  for (int i = 1; i < size - 1; i++) {
-    int dif1 = arr[i] - arr[i - 1];
-    int dif2 = arr[i + 1] - arr[i];
-    
-    if (abs(dif2 - dif1) < 10) {  // Ajustar umbral
-      cambiosSuaves++;
-    }
-    totalCambios++;
-  }
 
-  float proporcionSuave = (float)cambiosSuaves / totalCambios;
-  return proporcionSuave >= 1;  // Ajustar proporción
-}
-
-*/
 //Funcion que verifica si es senoidal a altas frecuencias
 bool senalSenoidal(int *arr,int size,float amplitud,float frecuencia){
   float cambio=0,promCambios=0,totalCambios=0;
@@ -244,8 +224,6 @@ bool senalSenoidal(int *arr,int size,float amplitud,float frecuencia){
   }
   return false;
 }
-
-
 
 
 //Funcion que verifica si es una señal triangular
