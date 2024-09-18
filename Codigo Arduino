@@ -1,3 +1,6 @@
+//Link simulacion: https://www.tinkercad.com/things/hLUEz3BsQe3-desafio-1-info2?sharecode=zFcRhMlUE7vxQAjAXnmZBzXwpVCLA2Hio8FLJ7Vzh5Y
+
+
 #include <LiquidCrystal.h>
 //Pines, Pulsadores
 int analogPin = 0;
@@ -9,8 +12,8 @@ int estadoAC2 = 0;  // Estado para mostrar datos
 //Lecturas
 int val = 0;
 int cantidadVal = 0;
-short int crucesCero=0;
-int capacidad = 180;
+byte crucesCero=0;
+short int capacidad = 180;
 
 //Informacion de la señal
 bool Cuadrada = false;
@@ -94,7 +97,7 @@ void loop() {
       // Guardar los datos actuales como los anteriores para la siguiente comparación
       amplitudAnterior = amplitudActual;
       frecuenciaAnterior = frecuenciaActual;
-      //Reiniciar variables y arreglo para nueva toma de datos
+	  //Reiniciar variables y arreglo para nueva toma de datos
       Reseteo(arregloVal,capacidad,cantidadVal,tiempo_actual);
     }
   }
@@ -189,7 +192,7 @@ float medirAmplitud(int* arr, int size) {
   return amplitud;
 }
 
-//Funcion que verifica si es senoidal a altas frecuencias
+//Funcion que verifica si es senoidal
 bool senalSenoidal(int *arr,int size,float amplitud,float frecuencia){
   float cambio=0,promCambios=0,totalCambios=0;
   float valorMax = 0;
@@ -301,3 +304,4 @@ void Reseteo(int*& arregloVal, int capacidad, int& cantidadVal,unsigned int& tie
     // Reiniciar el tiempo actual
     tiempo_actual = millis();
 }
+
